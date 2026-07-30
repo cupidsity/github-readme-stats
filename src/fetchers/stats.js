@@ -320,8 +320,17 @@ const fetchStats = async (
   }
   // repositoriesContributedTo only reflects recent activity, so the lifetime
   // count is assembled from the per-year contribution collections instead.
+  //
+  // Those collections name only the repositories the token can see: commits in
+  // private repositories arrive as an anonymous restrictedContributionsCount,
+  // so their repositories are missing from the per-year lists. Falling back to
+  // the larger of the two keeps the lifetime figure from dropping below the
+  // recent window, which does resolve private repositories.
   stats.contributedTo = lifetimeContributions
-    ? lifetimeContributions.contributedTo
+    ? Math.max(
+        lifetimeContributions.contributedTo,
+        user.repositoriesContributedTo.totalCount,
+      )
     : user.repositoriesContributedTo.totalCount;
 
   // Retrieve stars while filtering out repositories to be hidden.

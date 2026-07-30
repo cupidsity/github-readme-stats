@@ -313,8 +313,10 @@ describe("Test fetchStats", () => {
       followers: 100,
     });
 
+    // The fixture's per-year lists name 2 repositories, but the recent window
+    // resolves 61, so the larger figure wins.
     expect(stats).toStrictEqual({
-      contributedTo: 2,
+      contributedTo: 61,
       name: "Anurag Hazra",
       totalCommits: 1300,
       totalIssues: 200,
@@ -327,6 +329,74 @@ describe("Test fetchStats", () => {
       totalDiscussionsAnswered: 0,
       rank,
     });
+  });
+
+  it("should prefer the lifetime contributed count when it exceeds the recent window", async () => {
+    const currentYear = new Date().getUTCFullYear();
+    const data_stats_few_recent = JSON.parse(JSON.stringify(data_stats));
+    data_stats_few_recent.data.user.repositoriesContributedTo.totalCount = 1;
+
+    mock.reset();
+    mock.onPost("https://api.github.com/graphql").reply((cfg) => {
+      const req = JSON.parse(cfg.data);
+      if (req.query.includes("userCreatedAt")) {
+        return [
+          200,
+          { data: { user: { createdAt: `${currentYear}-01-01T00:00:00Z` } } },
+        ];
+      }
+      if (req.query.includes("lifetimeContributions")) {
+        return [
+          200,
+          {
+            data: {
+              user: {
+                [`year${currentYear}`]: {
+                  totalCommitContributions: 10,
+                  restrictedContributionsCount: 0,
+                  commitContributionsByRepository: [
+                    {
+                      repository: {
+                        nameWithOwner: "some-org/repo-a",
+                        owner: { login: "some-org" },
+                      },
+                    },
+                    {
+                      repository: {
+                        nameWithOwner: "some-org/repo-b",
+                        owner: { login: "some-org" },
+                      },
+                    },
+                  ],
+                  issueContributionsByRepository: [],
+                  pullRequestContributionsByRepository: [],
+                },
+              },
+            },
+          },
+        ];
+      }
+      return [
+        200,
+        req.query.includes("repositoriesContributedTo")
+          ? data_stats_few_recent
+          : data_repo,
+      ];
+    });
+
+    let stats = await fetchStats(
+      "anuraghazra",
+      false,
+      [],
+      false,
+      false,
+      false,
+      undefined,
+      true,
+    );
+
+    expect(stats.contributedTo).toBe(2);
+    expect(stats.totalCommits).toBe(10);
   });
 
   it("should throw specific error when include_all_commits true and invalid username", async () => {
