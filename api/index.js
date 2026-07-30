@@ -28,6 +28,7 @@ export default async (req, res) => {
     hide_rank,
     show_icons,
     include_all_commits,
+    all_time,
     commits_year,
     line_height,
     title_color,
@@ -85,6 +86,7 @@ export default async (req, res) => {
 
   try {
     const showStats = parseArray(show);
+    const showAllTime = parseBoolean(all_time);
     const stats = await fetchStats(
       username,
       parseBoolean(include_all_commits),
@@ -94,6 +96,7 @@ export default async (req, res) => {
       showStats.includes("discussions_started"),
       showStats.includes("discussions_answered"),
       parseInt(commits_year, 10),
+      showAllTime,
     );
     const cacheSeconds = resolveCacheSeconds({
       requested: parseInt(cache_seconds, 10),
@@ -112,7 +115,8 @@ export default async (req, res) => {
         hide_border: parseBoolean(hide_border),
         card_width: parseInt(card_width, 10),
         hide_rank: parseBoolean(hide_rank),
-        include_all_commits: parseBoolean(include_all_commits),
+        // an all time count has no year to label, same as include_all_commits.
+        include_all_commits: parseBoolean(include_all_commits) || showAllTime,
         commits_year: parseInt(commits_year, 10),
         line_height,
         title_color,

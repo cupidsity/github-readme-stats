@@ -406,6 +406,7 @@ If we don't support your language, please consider contributing! You can find mo
 | `number_precision` | Enforce the number of digits after the decimal point for `short` number format. Must be an integer between 0 and 2. Will be ignored for `long` number format. | integer (0, 1 or 2) | `null` |
 | `show` | Shows [additional items](#showing-additional-individual-stats) on stats card (i.e. `reviews`, `discussions_started`, `discussions_answered`, `prs_merged` or `prs_merged_percentage`). | string (comma-separated values) | `null` |
 | `commits_year` | Filters and counts only commits made in the specified year. | integer _(YYYY)_ | `<current year> (one year to date)` |
+| `all_time` | Counts commits and contributed repositories over the whole account lifetime, including private ones when the instance uses your own PAT. Prefer this over `include_all_commits`, which reads the REST commit search index and cannot see private repositories. | boolean | `false` |
 
 <table><tr><td>
 ⚠️<b>Warning</b>

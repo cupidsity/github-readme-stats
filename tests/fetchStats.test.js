@@ -234,6 +234,100 @@ describe("Test fetchStats", () => {
     });
   });
 
+  it("should fetch lifetime commits and contributed repositories when all_time is true", async () => {
+    // Keep the fixture to the current year so the aliased year fields the
+    // fetcher asks for always match the ones mocked here.
+    const currentYear = new Date().getUTCFullYear();
+    const data_lifetime = {
+      data: {
+        user: {
+          [`year${currentYear}`]: {
+            totalCommitContributions: 1234,
+            commitContributionsByRepository: [
+              {
+                repository: {
+                  nameWithOwner: "anuraghazra/own-repo",
+                  owner: { login: "anuraghazra" },
+                },
+              },
+              {
+                repository: {
+                  nameWithOwner: "some-org/shared-repo",
+                  owner: { login: "some-org" },
+                },
+              },
+            ],
+            issueContributionsByRepository: [
+              {
+                repository: {
+                  nameWithOwner: "another-org/issues-repo",
+                  owner: { login: "another-org" },
+                },
+              },
+            ],
+            pullRequestContributionsByRepository: [],
+          },
+        },
+      },
+    };
+
+    mock.reset();
+    mock.onPost("https://api.github.com/graphql").reply((cfg) => {
+      const req = JSON.parse(cfg.data);
+      if (req.query.includes("userCreatedAt")) {
+        return [
+          200,
+          { data: { user: { createdAt: `${currentYear}-01-01T00:00:00Z` } } },
+        ];
+      }
+      if (req.query.includes("lifetimeContributions")) {
+        return [200, data_lifetime];
+      }
+      return [
+        200,
+        req.query.includes("repositoriesContributedTo")
+          ? data_stats
+          : data_repo,
+      ];
+    });
+
+    let stats = await fetchStats(
+      "anuraghazra",
+      false,
+      [],
+      false,
+      false,
+      false,
+      undefined,
+      true,
+    );
+    const rank = calculateRank({
+      all_commits: true,
+      commits: 1234,
+      prs: 300,
+      reviews: 50,
+      issues: 200,
+      repos: 5,
+      stars: 300,
+      followers: 100,
+    });
+
+    expect(stats).toStrictEqual({
+      contributedTo: 2,
+      name: "Anurag Hazra",
+      totalCommits: 1234,
+      totalIssues: 200,
+      totalPRs: 300,
+      totalPRsMerged: 0,
+      mergedPRsPercentage: 0,
+      totalReviews: 50,
+      totalStars: 300,
+      totalDiscussionsStarted: 0,
+      totalDiscussionsAnswered: 0,
+      rank,
+    });
+  });
+
   it("should throw specific error when include_all_commits true and invalid username", async () => {
     expect(fetchStats("asdf///---", true)).rejects.toThrow(
       new Error("Invalid username provided."),

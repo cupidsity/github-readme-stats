@@ -10,6 +10,7 @@ import { excludeRepositories } from "../common/envs.js";
 import { CustomError, MissingParamError } from "../common/error.js";
 import { wrapTextMultiline } from "../common/fmt.js";
 import { request } from "../common/http.js";
+import { fetchLifetimeContributions } from "./lifetime.js";
 
 dotenv.config();
 
@@ -222,6 +223,7 @@ const totalCommitsFetcher = async (username) => {
  * @param {boolean} include_discussions Include discussions.
  * @param {boolean} include_discussions_answers Include discussions answers.
  * @param {number|undefined} commits_year Year to count total commits
+ * @param {boolean} all_time Count commits and contributed repositories over the whole account lifetime.
  * @returns {Promise<import("./types").StatsData>} Stats data.
  */
 const fetchStats = async (
@@ -232,6 +234,7 @@ const fetchStats = async (
   include_discussions = false,
   include_discussions_answers = false,
   commits_year,
+  all_time = false,
 ) => {
   if (!username) {
     throw new MissingParamError(["username"]);
@@ -285,8 +288,15 @@ const fetchStats = async (
 
   stats.name = user.name || user.login;
 
-  // if include_all_commits, fetch all commits using the REST API.
-  if (include_all_commits) {
+  // if all_time, sum every year of contributions so private commits are counted.
+  const lifetimeContributions = all_time
+    ? await fetchLifetimeContributions(username)
+    : null;
+
+  if (lifetimeContributions) {
+    stats.totalCommits = lifetimeContributions.totalCommits;
+  } else if (include_all_commits) {
+    // if include_all_commits, fetch all commits using the REST API.
     stats.totalCommits = await totalCommitsFetcher(username);
   } else {
     stats.totalCommits = user.commits.totalCommitContributions;
@@ -308,7 +318,11 @@ const fetchStats = async (
     stats.totalDiscussionsAnswered =
       user.repositoryDiscussionComments.totalCount;
   }
-  stats.contributedTo = user.repositoriesContributedTo.totalCount;
+  // repositoriesContributedTo only reflects recent activity, so the lifetime
+  // count is assembled from the per-year contribution collections instead.
+  stats.contributedTo = lifetimeContributions
+    ? lifetimeContributions.contributedTo
+    : user.repositoriesContributedTo.totalCount;
 
   // Retrieve stars while filtering out repositories to be hidden.
   const allExcludedRepos = [...exclude_repo, ...excludeRepositories];
@@ -323,7 +337,7 @@ const fetchStats = async (
     }, 0);
 
   stats.rank = calculateRank({
-    all_commits: include_all_commits,
+    all_commits: include_all_commits || all_time,
     commits: stats.totalCommits,
     prs: stats.totalPRs,
     reviews: stats.totalReviews,
