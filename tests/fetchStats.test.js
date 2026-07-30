@@ -243,6 +243,7 @@ describe("Test fetchStats", () => {
         user: {
           [`year${currentYear}`]: {
             totalCommitContributions: 1234,
+            restrictedContributionsCount: 66,
             commitContributionsByRepository: [
               {
                 repository: {
@@ -303,7 +304,7 @@ describe("Test fetchStats", () => {
     );
     const rank = calculateRank({
       all_commits: true,
-      commits: 1234,
+      commits: 1300,
       prs: 300,
       reviews: 50,
       issues: 200,
@@ -315,7 +316,7 @@ describe("Test fetchStats", () => {
     expect(stats).toStrictEqual({
       contributedTo: 2,
       name: "Anurag Hazra",
-      totalCommits: 1234,
+      totalCommits: 1300,
       totalIssues: 200,
       totalPRs: 300,
       totalPRsMerged: 0,

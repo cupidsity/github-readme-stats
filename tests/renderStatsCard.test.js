@@ -26,6 +26,24 @@ const stats = {
 };
 
 describe("Test renderStatsCard", () => {
+  it("should label commits and contributions with the last year window by default", () => {
+    document.body.innerHTML = renderStatsCard(stats, { show_icons: true });
+
+    expect(document.body.textContent).toContain("Total Commits (last year)");
+    expect(document.body.textContent).toContain("Contributed to (last year)");
+  });
+
+  it("should drop the last year window from both labels when all_time is set", () => {
+    document.body.innerHTML = renderStatsCard(stats, {
+      show_icons: true,
+      all_time: true,
+    });
+
+    expect(document.body.textContent).not.toContain("last year");
+    expect(document.body.textContent).toContain("Total Commits");
+    expect(document.body.textContent).toContain("Contributed to");
+  });
+
   it("should render correctly", () => {
     document.body.innerHTML = renderStatsCard(stats);
 

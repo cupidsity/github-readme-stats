@@ -243,6 +243,18 @@ const getTotalCommitsYearLabel = (include_all_commits, commits_year, i18n) =>
       : ` (${i18n.t("wakatimecard.lastyear")})`;
 
 /**
+ * Drop the trailing time window from a label that hardcodes one.
+ *
+ * Every translation of `statcard.contribs` ends in a parenthesised "last year",
+ * which no longer applies once the count covers the whole account lifetime.
+ *
+ * @param {string} label The translated label.
+ * @returns {string} The label without its trailing parenthesised qualifier.
+ */
+const stripTimeWindowFromLabel = (label) =>
+  label.replace(/\s*\([^()]*\)\s*$/, "");
+
+/**
  * @typedef {import('../fetchers/types').StatsData} StatsData
  * @typedef {import('./types').StatCardOptions} StatCardOptions
  */
@@ -277,6 +289,7 @@ const renderStatsCard = (stats, options = {}) => {
     card_width,
     hide_rank = false,
     include_all_commits = false,
+    all_time = false,
     commits_year,
     line_height = 25,
     title_color,
@@ -332,7 +345,7 @@ const renderStatsCard = (stats, options = {}) => {
   STATS.commits = {
     icon: icons.commits,
     label: `${i18n.t("statcard.commits")}${getTotalCommitsYearLabel(
-      include_all_commits,
+      include_all_commits || all_time,
       commits_year,
       i18n,
     )}`,
@@ -404,7 +417,9 @@ const renderStatsCard = (stats, options = {}) => {
 
   STATS.contribs = {
     icon: icons.contribs,
-    label: i18n.t("statcard.contribs"),
+    label: all_time
+      ? stripTimeWindowFromLabel(i18n.t("statcard.contribs"))
+      : i18n.t("statcard.contribs"),
     value: contributedTo,
     id: "contribs",
   };
@@ -572,7 +587,7 @@ const renderStatsCard = (stats, options = {}) => {
       const stats = STATS[key];
       if (key === "commits") {
         return `${i18n.t("statcard.commits")} ${getTotalCommitsYearLabel(
-          include_all_commits,
+          include_all_commits || all_time,
           commits_year,
           i18n,
         )} : ${stats.value}`;

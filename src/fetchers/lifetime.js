@@ -54,7 +54,8 @@ const buildLifetimeQuery = (yearRanges) => {
     .map(
       ({ year, from, to }) => `
       year${year}: contributionsCollection(from: "${from}", to: "${to}") {
-        totalCommitContributions${repositoryFields}
+        totalCommitContributions
+        restrictedContributionsCount${repositoryFields}
       }`,
     )
     .join("");
@@ -170,9 +171,9 @@ const throwGraphQLError = (response) => {
 /**
  * Fetch lifetime commit and repository contribution totals for a user.
  *
- * Both numbers come from the GraphQL contributionsCollection, so private
- * contributions are counted whenever the configured PAT belongs to the queried
- * user. The REST commit search used by `include_all_commits` cannot see those.
+ * Both numbers come from the GraphQL contributionsCollection, which counts
+ * private contributions when the configured PAT belongs to the queried user.
+ * The REST commit search used by `include_all_commits` cannot see those.
  *
  * `contributedTo` counts distinct repositories the user does not own, matching
  * the `includeUserRepositories: false` default of `repositoriesContributedTo`.
@@ -222,7 +223,13 @@ const fetchLifetimeContributions = async (username, now = new Date()) => {
       continue;
     }
 
-    totalCommits += yearContributions.totalCommitContributions;
+    // Commits in private repositories are reported separately unless the
+    // account enables "Include private contributions on my profile". When it is
+    // enabled they are already inside totalCommitContributions and the
+    // restricted count is zero, so adding both never double counts.
+    totalCommits +=
+      yearContributions.totalCommitContributions +
+      yearContributions.restrictedContributionsCount;
 
     for (const field of CONTRIBUTION_REPOSITORY_FIELDS) {
       for (const contribution of yearContributions[field] ?? []) {

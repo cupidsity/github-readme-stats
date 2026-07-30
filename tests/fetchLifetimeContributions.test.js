@@ -27,6 +27,7 @@ const data_lifetime = {
     user: {
       year2024: {
         totalCommitContributions: 100,
+        restrictedContributionsCount: 7,
         commitContributionsByRepository: [
           repositoryContribution("cupidsity/own-private-repo"),
           repositoryContribution("some-org/shared-repo"),
@@ -40,6 +41,7 @@ const data_lifetime = {
       },
       year2025: {
         totalCommitContributions: 250,
+        restrictedContributionsCount: 0,
         commitContributionsByRepository: [
           repositoryContribution("some-org/shared-repo"),
         ],
@@ -50,6 +52,7 @@ const data_lifetime = {
       },
       year2026: {
         totalCommitContributions: 50,
+        restrictedContributionsCount: 3,
         commitContributionsByRepository: [
           repositoryContribution("cupidsity/own-private-repo"),
         ],
@@ -128,7 +131,20 @@ describe("Test fetchLifetimeContributions", () => {
   it("should sum commits across every year", async () => {
     const lifetime = await fetchLifetimeContributions("cupidsity", now);
 
-    expect(lifetime.totalCommits).toBe(400);
+    // 100 + 250 + 50 public, plus 7 + 0 + 3 in private repositories.
+    expect(lifetime.totalCommits).toBe(410);
+  });
+
+  it("should request the private commit count for every year", async () => {
+    await fetchLifetimeContributions("cupidsity", now);
+
+    const lifetimeRequest = mock.history.post.find((request) =>
+      JSON.parse(request.data).query.includes("lifetimeContributions"),
+    );
+
+    expect(JSON.parse(lifetimeRequest.data).query).toContain(
+      "restrictedContributionsCount",
+    );
   });
 
   it("should count distinct repositories the user does not own", async () => {
